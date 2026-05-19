@@ -15,7 +15,6 @@ from autoresearcher.client import call_tool, list_tools
 
 st.set_page_config(page_title="AutoResearcher", page_icon="🔎", layout="wide")
 st.title("🔎 AutoResearcher")
-st.caption("Multi-agent research powered by Llama 3.3-70B (Groq) · FastMCP · Streamable HTTP")
 
 # --- Resolve MCP URL: Streamlit Secrets > env var > sidebar input ---
 default_url = (
