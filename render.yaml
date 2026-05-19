@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: autoresearcher-mcp
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m autoresearcher.mcp_server
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: MODEL_NAME
+        value: llama-3.3-70b-versatile
+      - key: MAX_ITERATIONS
+        value: 3
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+    healthCheckPath: /mcp
