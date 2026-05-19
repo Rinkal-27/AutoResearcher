@@ -1,19 +1,15 @@
 # AutoResearcher
 
-Multi-agent research and report-generation system.
+A multi-agent research assistant that turns a single question into a fully cited Markdown report.
 
-- **LangGraph** state machine (Planner → Researcher → Writer → Critic loop)
-- **Free LLM**: Llama 3.3-70B via **Groq**
-- **FastMCP** server with **Streamable HTTP** transport
-- **Streamlit** UI that calls the deployed MCP server as a real MCP client
-- 100% free-tier deployable: Groq + Tavily free + Render free web service + Streamlit Community Cloud
+A **Planner** breaks the question into focused sub-questions, a **Researcher** gathers evidence from the web, a **Writer** drafts a structured report with inline citations, and a **Critic** fact-checks the draft against the evidence. If the Critic spots unsupported claims it sends the Researcher back for another pass — the loop runs until the report is grounded or `max_iterations` is reached.
 
 ```
                  ┌───────────┐
         query ─▶ │  Planner  │── sub-questions ─┐
                  └───────────┘                  ▼
                                           ┌────────────┐
-                                          │ Researcher │◀── Tavily
+                                          │ Researcher │◀── Tavily web search
                                           └────────────┘
                                                 │
                                                 ▼
@@ -28,63 +24,94 @@ Multi-agent research and report-generation system.
                                                          final report
 ```
 
-## Local quick start
+## Stack
 
-```powershell
-cd projects/autoresearcher
-python -m venv .venv ; .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-Copy-Item .env.example .env
-# edit .env: GROQ_API_KEY (free at console.groq.com), TAVILY_API_KEY (free at tavily.com)
+- **LangGraph** — stateful multi-agent orchestration with a Critic loop
+- **Groq Llama 3.3-70B** — fast, free LLM inference
+- **Tavily** — LLM-friendly web search for evidence gathering
+- **FastMCP** with **Streamable HTTP** transport — exposes the pipeline as MCP tools
+- **Streamlit** — UI that talks to the MCP server as a real MCP client
 
-# 1) Run MCP server (streamable HTTP on http://localhost:8000/mcp)
-python -m autoresearcher.mcp_server
+## MCP tools exposed
 
-# 2) In another shell, run the Streamlit client
-streamlit run streamlit_app.py
+| Tool | Description |
+| --- | --- |
+| `research(query, max_iterations=3)` | Full pipeline → cited Markdown report |
+| `quick_search(query, max_results=5)` | Single Tavily search, raw JSON results |
+
+## Hosted MCP endpoint
+
+A public instance is deployed at:
+
+```
+https://autoresearcher-bwre.onrender.com/mcp
 ```
 
-Point the Streamlit UI's "MCP server URL" field to your local or deployed URL.
+You can point any MCP-aware client (Claude Desktop, Cursor, VS Code, or the Streamlit UI in this repo) at that URL — no local setup required.
 
-## Free deployment
-
-### MCP server → Render.com (free web service)
-
-1. Push this folder to a GitHub repo.
-2. On https://render.com → **New + → Web Service** → connect repo.
-3. Render auto-detects [render.yaml](render.yaml). Set env vars `GROQ_API_KEY` and `TAVILY_API_KEY` in the dashboard.
-4. After deploy, your MCP endpoint is `https://<service>.onrender.com/mcp`.
-
-> The free tier spins down after 15 min of inactivity (first request after that takes ~30s to wake up).
-
-Alternatives: **Fly.io** (free allowance), **Railway** (trial credits), **Hugging Face Spaces** Docker SDK.
-
-### Streamlit UI → Streamlit Community Cloud (free)
-
-1. Push this folder to GitHub (same or separate repo).
-2. https://share.streamlit.io → **New app** → point to [streamlit_app.py](streamlit_app.py).
-3. In **Advanced settings → Secrets**, paste:
-   ```toml
-   MCP_URL = "https://<your-render-service>.onrender.com/mcp"
-   ```
-4. Deploy. Done.
-
-## MCP client config (Claude Desktop / Cursor / VS Code)
-
-Once deployed, any MCP-aware client can use the streamable-HTTP URL directly. For Claude Desktop add to `claude_desktop_config.json`:
+For Claude Desktop add this to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "autoresearcher": {
       "transport": "http",
-      "url": "https://<your-render-service>.onrender.com/mcp"
+      "url": "https://autoresearcher-bwre.onrender.com/mcp"
     }
   }
 }
 ```
 
-## Tools exposed by the MCP server
+> The host sleeps after inactivity; the first request may take ~30s to wake.
 
-- `research(query, max_iterations=3)` → full cited Markdown report
-- `quick_search(query, max_results=5)` → raw Tavily results
+## Run locally
+
+Prerequisites: Python 3.11, a free Groq API key (https://console.groq.com), a free Tavily key (https://tavily.com).
+
+```powershell
+cd projects/autoresearcher
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+Copy-Item .env.example .env
+# Edit .env and fill in GROQ_API_KEY and TAVILY_API_KEY
+```
+
+### Option 1 — CLI
+
+```powershell
+python -m autoresearcher.cli "What are the latest advances in Model Context Protocol?"
+```
+
+### Option 2 — Local MCP server
+
+```powershell
+python -m autoresearcher.mcp_server
+# Streamable HTTP endpoint: http://localhost:8000/mcp
+```
+
+### Option 3 — Streamlit UI (MCP client)
+
+```powershell
+streamlit run streamlit_app.py
+```
+
+In the sidebar, set the **MCP server URL** to either:
+- `http://localhost:8000/mcp` (your local server), or
+- `https://autoresearcher-bwre.onrender.com/mcp` (the hosted instance).
+
+## Project layout
+
+```
+autoresearcher/
+  state.py        # Typed LangGraph state
+  llm.py          # Groq Llama factory
+  tools.py        # Tavily web search wrapper
+  agents.py       # Planner / Researcher / Writer / Critic nodes
+  graph.py        # LangGraph wiring + run_research()
+  mcp_server.py   # FastMCP server (streamable HTTP)
+  client.py       # MCP client helpers (used by Streamlit)
+  cli.py          # CLI entrypoint
+streamlit_app.py  # MCP-client UI
+```
