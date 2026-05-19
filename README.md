@@ -39,15 +39,12 @@ A **Planner** breaks the question into focused sub-questions, a **Researcher** g
 | `research(query, max_iterations=3)` | Full pipeline → cited Markdown report |
 | `quick_search(query, max_results=5)` | Single Tavily search, raw JSON results |
 
-## Hosted MCP endpoint
+## Live demo
 
-A public instance is deployed at:
+- **Streamlit app:** https://autoresearcher-mqkxeimrurndr7zeffdwcv.streamlit.app/
+- **MCP endpoint:** `https://autoresearcher-bwre.onrender.com/mcp`
 
-```
-https://autoresearcher-bwre.onrender.com/mcp
-```
-
-You can point any MCP-aware client (Claude Desktop, Cursor, VS Code, or the Streamlit UI in this repo) at that URL — no local setup required.
+You can point any MCP-aware client (Claude Desktop, Cursor, VS Code, or the Streamlit UI in this repo) at the MCP endpoint above — no local setup required.
 
 For Claude Desktop add this to `claude_desktop_config.json`:
 
